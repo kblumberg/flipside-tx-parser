@@ -2,5 +2,10 @@
 # dependencies
 /node_modules
 
+# dependencies
+/output
+
 # production
 /build
+.env
+*.DS_Store
