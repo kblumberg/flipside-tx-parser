@@ -1,8 +1,17 @@
 import * as snowflake from 'snowflake-sdk';
 import { Idl } from '@project-serum/anchor';
-import { PublicKey, Message } from '@solana/web3.js';
+import { PublicKey, Message, Connection, ConnectionConfig, GetVersionedTransactionConfig } from '@solana/web3.js';
 import { writeFile, readdirSync, readFileSync } from 'fs';
 import { compiledInstructionToInstruction, parseTransactionAccounts, SolanaParser } from '@debridge-finance/solana-transaction-parser';
+
+
+export const NETWORK = 'https://red-cool-wildflower.solana-mainnet.quiknode.pro/a1674d4ab875dd3f89b34863a86c0f1931f57090/';
+
+export const CONFIG: ConnectionConfig = {
+	commitment: 'confirmed',
+	disableRetryOnRateLimit: false,
+	confirmTransactionInitialTimeout: 150000
+};
 
 const snowConnect = snowflake.createConnection({
     account: 'vna27887.us-east-1',
@@ -155,4 +164,89 @@ const parseTx = async (txId: string, date: string, programId:string, conn: snowf
     })
 }
 
-parsePrograms();
+
+// function readTextFile(file: any, callback: any) {
+//     console.log('readTextFile');
+//     var rawFile = new XMLHttpRequest();
+//     rawFile.overrideMimeType("application/json");
+//     console.log('readTextFile 32');
+//     rawFile.open("GET", file, true);
+//     console.log('readTextFile 34');
+//     rawFile.onreadystatechange = function() {
+//         console.log('readTextFile 36');
+//         // if (rawFile.readyState === 4 && rawFile.status == "200") {
+//         if (rawFile.readyState === 4) {
+//             callback(rawFile.responseText);
+//         }
+//     }
+//     console.log('readTextFile 42');
+//     rawFile.send(null);
+//     console.log('readTextFile 44');
+// }
+
+const getTxSizes = async () => {
+
+    // readTextFile("./src/tx_sizes.json", function(text: any){
+    //     console.log('readTextFile callback');
+    //     console.log(text);
+    //     var data = JSON.parse(text);
+    //     console.log('readTextFile data');
+    //     console.log(data);
+    // });
+    const text = readFileSync(`./src/tx_sizes.json`, 'utf8');
+    const j = JSON.parse( text );
+    const results = [];
+    let nCorrect = 0;
+    let nIncorrect = 0;
+
+    const config: GetVersionedTransactionConfig = {
+        'commitment': 'confirmed'
+        , 'maxSupportedTransactionVersion': 100
+    }
+
+    // for (let i = 0; i < j.length; i++) {
+    for (let i = 0; i < 300; i++) {
+        if (i % 10 == 0) {
+            console.log(i)
+        }
+        const el: any = j[i];
+        // console.log(`${i} el`)
+        // console.log(el)
+
+        const txId = el['TX_ID'];
+        const connection = new Connection(NETWORK, CONFIG);
+        const result = await connection.getTransaction(txId, config);
+        // const tx = new Transaction(result);
+        // console.log('result');
+        // console.log(result);
+        if (result) {
+            // console.log('serialized0');
+            const serialized = result.transaction.message.serialize()
+            // console.log('serialized');
+            // console.log(serialized);
+            const size = (serialized ? serialized.length : 0) + 1 + result.transaction.signatures.length * 64;
+            el['size'] = size;
+            results.push(el);
+            // console.log('size');
+            // console.log(size);
+            // const isCorrect = (size == sizes[i]) ? 1 : 0
+            // nCorrect += isCorrect;
+            // nIncorrect += (1 - isCorrect);
+            // if (!isCorrect) {
+            //     if (size - 1 == sizes[i]) {
+            //         // console.log(`1 too small`)
+            //     } else {
+            //         console.log(`${txId}: db=${sizes[i]}; actual = ${size} `);
+            //         console.log(result);
+            //     }
+            // }
+        }
+    }
+    // console.log('97');
+    const json = JSON.stringify(results);
+    // console.log('json');
+    // console.log(json);
+    writeFile('myjsonfile.json', json, 'utf8', (tmp: any) => {console.log(tmp)});
+}
+
+getTxSizes();
